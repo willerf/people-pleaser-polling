@@ -10,12 +10,15 @@ html, body {
 
 input[type="range"] {
   @apply w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-700;
+  padding: 12px 0;
+  margin: -12px 0;
+  background-clip: content-box;
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  @apply appearance-none w-5 h-5 rounded-full bg-indigo-500;
+  @apply appearance-none w-7 h-7 rounded-full bg-indigo-500;
 }
 
 input[type="range"]::-moz-range-thumb {
-  @apply w-5 h-5 rounded-full bg-indigo-500 border-0;
+  @apply w-7 h-7 rounded-full bg-indigo-500 border-0;
 }

@@ -29,7 +29,7 @@ function HoldToEndButton({ onEnd }: { onEnd: () => void }) {
 
   function tick() {
     const elapsed = Date.now() - startTime.current;
-    const p = Math.min(elapsed / 2000, 1);
+    const p = Math.min(elapsed / 1000, 1);
     setProgress(p);
     if (p >= 1) {
       setHolding(false);
@@ -288,7 +288,7 @@ export default function PollPage() {
 
           {/* Scores breakdown */}
           {poll.showScores && poll.scores && (
-            <div className="mt-4 space-y-2 text-left">
+            <div className="mt-4 space-y-3 text-left">
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">
                 Average Scores
               </p>
@@ -297,7 +297,7 @@ export default function PollPage() {
                 .sort((a, b) => b.score - a.score)
                 .map(({ option, score }, i) => {
                   const maxScore = Math.max(...poll.scores!.map(Math.abs), 0.1);
-                  const barWidth = Math.abs(score) / maxScore;
+                  const barPercent = (Math.abs(score) / maxScore) * 50;
                   const isWinner = option === poll.winner;
                   return (
                     <div key={i} className="space-y-1">
@@ -309,17 +309,29 @@ export default function PollPage() {
                           {score > 0 ? "+" : ""}{score.toFixed(1)}
                         </span>
                       </div>
-                      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden">
+                        {/* Center line */}
+                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600" />
+                        {/* Bar — grows left for negative, right for positive */}
                         <div
-                          className={`h-full rounded-full ${
+                          className={`absolute top-0 bottom-0 rounded-full ${
                             score >= 0 ? "bg-indigo-500" : "bg-red-500"
                           } ${isWinner ? "opacity-100" : "opacity-60"}`}
-                          style={{ width: `${barWidth * 100}%` }}
+                          style={
+                            score >= 0
+                              ? { left: "50%", width: `${barPercent}%` }
+                              : { right: "50%", width: `${barPercent}%` }
+                          }
                         />
                       </div>
                     </div>
                   );
                 })}
+              <div className="flex justify-between text-xs text-gray-600 mt-1">
+                <span>-1.0</span>
+                <span>0</span>
+                <span>+1.0</span>
+              </div>
             </div>
           )}
 
