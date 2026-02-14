@@ -137,7 +137,7 @@ export default function CreatePoll() {
       <img
         src="/logo.png"
         alt="People Pleaser Polling"
-        className="w-36 h-36 mx-auto drop-shadow-lg"
+        className="w-36 h-36 mx-auto drop-shadow-lg object-contain"
       />
       <p className="theme-secondary text-center text-sm">
         Create a poll and share it with friends

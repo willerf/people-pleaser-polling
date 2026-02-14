@@ -238,7 +238,7 @@ export default function PollPage() {
         <img
           src="/logo.png"
           alt="People Pleaser Polling"
-          className="w-20 h-20 mx-auto drop-shadow-md"
+          className="w-20 h-20 mx-auto drop-shadow-md object-contain"
         />
         <p className="theme-text font-bold text-lg">Poll not found</p>
         <p className="theme-secondary text-sm">
@@ -269,7 +269,7 @@ export default function PollPage() {
       <img
         src="/logo.png"
         alt="People Pleaser Polling"
-        className="w-20 h-20 mx-auto drop-shadow-md"
+        className="w-20 h-20 mx-auto drop-shadow-md object-contain"
       />
 
       {/* Share link */}
