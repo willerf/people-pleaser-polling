@@ -25,7 +25,7 @@ export async function POST(
     );
   }
 
-  const ok = addVote(params.id, values);
+  const ok = await addVote(params.id, values);
   if (!ok) {
     return NextResponse.json(
       { error: "Poll not found, ended, or wrong number of values" },

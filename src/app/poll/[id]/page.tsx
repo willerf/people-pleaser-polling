@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import confetti from "canvas-confetti";
+import { ThemeToggle } from "@/lib/theme";
 
 type PollState = {
   options: string[];
@@ -13,7 +14,7 @@ type PollState = {
   scores: number[] | null;
 };
 
-type Phase = "loading" | "voting" | "waiting" | "results";
+type Phase = "loading" | "voting" | "waiting" | "results" | "not_found";
 
 function HoldToEndButton({ onEnd }: { onEnd: () => void }) {
   const [holding, setHolding] = useState(false);
@@ -58,12 +59,13 @@ function HoldToEndButton({ onEnd }: { onEnd: () => void }) {
       onTouchStart={startHold}
       onTouchEnd={cancelHold}
       onTouchCancel={cancelHold}
-      className="relative w-full py-3 rounded-lg font-semibold overflow-hidden select-none touch-none"
+      className="relative w-full py-3 rounded-xl font-bold overflow-hidden select-none touch-none text-white shadow-md"
     >
-      <div className="absolute inset-0 bg-red-900/50" />
+      <div className="absolute inset-0 bg-[#E74C3C]/30" />
       <div
-        className="absolute inset-0 bg-red-600 origin-left"
+        className="absolute inset-0 origin-left"
         style={{
+          background: "linear-gradient(135deg, #E74C3C, #C0392B)",
           transform: `scaleX(${progress})`,
           transition: holding ? "none" : "transform 0.2s ease-out",
         }}
@@ -87,14 +89,14 @@ function fireConfetti() {
       angle: 60,
       spread: 55,
       origin: { x: 0, y: 0.6 },
-      colors: ["#818cf8", "#6366f1", "#a5b4fc", "#c7d2fe"],
+      colors: ["#2ECC71", "#3498DB", "#F39C12", "#E74C3C", "#F1C40F"],
     });
     confetti({
       particleCount: 3,
       angle: 120,
       spread: 55,
       origin: { x: 1, y: 0.6 },
-      colors: ["#818cf8", "#6366f1", "#a5b4fc", "#c7d2fe"],
+      colors: ["#2ECC71", "#3498DB", "#F39C12", "#E74C3C", "#F1C40F"],
     });
 
     if (Date.now() < end) {
@@ -102,15 +104,18 @@ function fireConfetti() {
     }
   }
 
-  // Initial burst
   confetti({
     particleCount: 80,
     spread: 100,
     origin: { y: 0.5 },
-    colors: ["#818cf8", "#6366f1", "#a5b4fc", "#c7d2fe", "#fbbf24"],
+    colors: ["#2ECC71", "#3498DB", "#F39C12", "#F1C40F", "#1ABC9C"],
   });
 
   frame();
+}
+
+function getVotedKey(id: string) {
+  return `voted_${id}`;
 }
 
 export default function PollPage() {
@@ -124,23 +129,46 @@ export default function PollPage() {
   const [copied, setCopied] = useState(false);
   const confettiFired = useRef(false);
 
+  const hasVoted = useCallback(() => {
+    try {
+      return localStorage.getItem(getVotedKey(id)) === "true";
+    } catch {
+      return false;
+    }
+  }, [id]);
+
+  const markVoted = useCallback(() => {
+    try {
+      localStorage.setItem(getVotedKey(id), "true");
+    } catch {
+      // localStorage not available
+    }
+  }, [id]);
+
   const fetchPoll = useCallback(async () => {
     try {
       const res = await fetch(`/api/poll/${id}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (res.status === 404) setPhase("not_found");
+        return;
+      }
       const data: PollState = await res.json();
       setPoll(data);
 
       if (data.ended) {
         setPhase("results");
       } else if (phase === "loading") {
-        setSliders(data.options.map(() => 0));
-        setPhase("voting");
+        if (hasVoted()) {
+          setPhase("waiting");
+        } else {
+          setSliders(data.options.map(() => 0));
+          setPhase("voting");
+        }
       }
     } catch {
       // network error, will retry
     }
-  }, [id, phase]);
+  }, [id, phase, hasVoted]);
 
   useEffect(() => {
     fetchPoll();
@@ -153,7 +181,6 @@ export default function PollPage() {
     }
   }, [phase, fetchPoll]);
 
-  // Fire confetti when entering results phase
   useEffect(() => {
     if (phase === "results" && !confettiFired.current) {
       confettiFired.current = true;
@@ -162,6 +189,7 @@ export default function PollPage() {
   }, [phase]);
 
   async function handleVote() {
+    if (hasVoted()) return;
     setSubmitting(true);
     try {
       await fetch(`/api/poll/${id}/vote`, {
@@ -169,6 +197,7 @@ export default function PollPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ values: sliders }),
       });
+      markVoted();
       setPhase("waiting");
     } finally {
       setSubmitting(false);
@@ -190,17 +219,45 @@ export default function PollPage() {
     }
   }
 
+  if (phase === "not_found") {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <img
+          src="/logo.png"
+          alt="People Pleaser Polling"
+          className="w-20 h-20 mx-auto drop-shadow-md"
+        />
+        <p className="theme-text font-bold text-lg">Poll not found</p>
+        <p className="theme-secondary text-sm">
+          This poll may have expired or the link may be incorrect.
+        </p>
+        <a
+          href="/"
+          className="inline-block mt-2 px-6 py-3 text-white font-bold rounded-xl shadow-md"
+          style={{ background: "linear-gradient(135deg, #F39C12, #E67E22)" }}
+        >
+          Create New Poll
+        </a>
+      </div>
+    );
+  }
+
   if (phase === "loading" || !poll) {
     return (
-      <div className="text-center text-gray-400 py-20">Loading poll...</div>
+      <div className="text-center theme-secondary py-20">Loading poll...</div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-center">
-        People Pleaser Polling
-      </h1>
+      <div className="flex justify-end">
+        <ThemeToggle />
+      </div>
+      <img
+        src="/logo.png"
+        alt="People Pleaser Polling"
+        className="w-20 h-20 mx-auto drop-shadow-md"
+      />
 
       {/* Share link */}
       <div className="flex gap-2">
@@ -208,56 +265,64 @@ export default function PollPage() {
           type="text"
           readOnly
           value={typeof window !== "undefined" ? window.location.href : ""}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 truncate"
+          className="flex-1 theme-surface border theme-border rounded-xl px-3 py-2 text-sm theme-secondary truncate theme-shadow"
+          style={{ background: "var(--bg-input)" }}
         />
         <button
           onClick={copyLink}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors"
+          className="px-4 py-2 theme-surface border theme-border hover:border-[#3498DB] rounded-xl text-sm theme-text theme-shadow transition-all"
         >
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
 
       {/* Vote count */}
-      <p className="text-center text-gray-400">
+      <p className="text-center theme-secondary text-sm font-medium">
         {poll.voteCount} vote{poll.voteCount !== 1 ? "s" : ""} so far
       </p>
 
       {/* Voting phase */}
       {phase === "voting" && (
         <div className="space-y-5">
-          {poll.options.map((option, i) => (
-            <div key={i} className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-200">{option}</span>
-                <span className="text-gray-400 tabular-nums w-12 text-right">
-                  {sliders[i]?.toFixed(1)}
-                </span>
+          <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-6">
+            {poll.options.map((option, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium theme-text">{option}</span>
+                  <span className="theme-secondary tabular-nums w-12 text-right font-medium">
+                    {sliders[i]?.toFixed(1)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={-1}
+                  max={1}
+                  step={0.1}
+                  value={sliders[i] ?? 0}
+                  onChange={(e) => {
+                    const next = [...sliders];
+                    next[i] = parseFloat(e.target.value);
+                    setSliders(next);
+                  }}
+                />
+                <div className="flex justify-between text-xs theme-muted">
+                  <span>Against</span>
+                  <span>Neutral</span>
+                  <span>For</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min={-1}
-                max={1}
-                step={0.1}
-                value={sliders[i] ?? 0}
-                onChange={(e) => {
-                  const next = [...sliders];
-                  next[i] = parseFloat(e.target.value);
-                  setSliders(next);
-                }}
-              />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Against</span>
-                <span>Neutral</span>
-                <span>For</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           <button
             onClick={handleVote}
             disabled={submitting}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 rounded-lg font-semibold transition-colors"
+            className="w-full py-3 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-40"
+            style={{
+              background: submitting
+                ? "var(--text-faint)"
+                : "linear-gradient(135deg, #3498DB, #2F80ED)",
+            }}
           >
             {submitting ? "Submitting..." : "Submit Vote"}
           </button>
@@ -267,10 +332,12 @@ export default function PollPage() {
       {/* Waiting phase */}
       {phase === "waiting" && (
         <div className="space-y-4 text-center">
-          <p className="text-green-400">Your vote has been submitted!</p>
-          <p className="text-gray-400 text-sm">
-            Waiting for others to vote...
-          </p>
+          <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-2">
+            <p className="text-[#2ECC71] font-bold">Your vote has been submitted!</p>
+            <p className="theme-secondary text-sm">
+              Waiting for others to vote...
+            </p>
+          </div>
           <HoldToEndButton onEnd={handleEnd} />
         </div>
       )}
@@ -278,18 +345,22 @@ export default function PollPage() {
       {/* Results phase */}
       {phase === "results" && poll.winner && (
         <div className="space-y-4 text-center">
-          <p className="text-gray-400 text-sm uppercase tracking-wide">
-            The winner is
-          </p>
-          <p className="text-4xl font-bold text-indigo-400">{poll.winner}</p>
-          <p className="text-gray-500 text-sm">
-            Based on {poll.voteCount} vote{poll.voteCount !== 1 ? "s" : ""}
-          </p>
+          <div className="theme-surface rounded-2xl p-6 theme-shadow border theme-border-light space-y-3">
+            <p className="theme-secondary text-xs uppercase tracking-widest font-bold">
+              The winner is
+            </p>
+            <p className="text-4xl font-black" style={{ color: "#2ECC71" }}>
+              {poll.winner}
+            </p>
+            <p className="theme-muted text-sm">
+              Based on {poll.voteCount} vote{poll.voteCount !== 1 ? "s" : ""}
+            </p>
+          </div>
 
           {/* Scores breakdown */}
           {poll.showScores && poll.scores && (
-            <div className="mt-4 space-y-3 text-left">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">
+            <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
+              <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
                 Average Scores
               </p>
               {poll.options
@@ -302,32 +373,31 @@ export default function PollPage() {
                   return (
                     <div key={i} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className={isWinner ? "text-indigo-400 font-semibold" : "text-gray-300"}>
+                        <span className={isWinner ? "font-bold text-[#2ECC71]" : "theme-text"}>
                           {option}
                         </span>
-                        <span className="text-gray-400 tabular-nums">
+                        <span className="theme-secondary tabular-nums font-medium">
                           {score > 0 ? "+" : ""}{score.toFixed(1)}
                         </span>
                       </div>
-                      <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden">
-                        {/* Center line */}
-                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600" />
-                        {/* Bar — grows left for negative, right for positive */}
+                      <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
+                        <div className="absolute left-1/2 top-0 bottom-0 w-px" style={{ background: "var(--border)" }} />
                         <div
-                          className={`absolute top-0 bottom-0 rounded-full ${
-                            score >= 0 ? "bg-indigo-500" : "bg-red-500"
-                          } ${isWinner ? "opacity-100" : "opacity-60"}`}
-                          style={
-                            score >= 0
+                          className={`absolute top-0 bottom-0 rounded-full ${isWinner ? "opacity-100" : "opacity-60"}`}
+                          style={{
+                            background: score >= 0
+                              ? "linear-gradient(90deg, #2ECC71, #27AE60)"
+                              : "linear-gradient(270deg, #E74C3C, #C0392B)",
+                            ...(score >= 0
                               ? { left: "50%", width: `${barPercent}%` }
-                              : { right: "50%", width: `${barPercent}%` }
-                          }
+                              : { right: "50%", width: `${barPercent}%` }),
+                          }}
                         />
                       </div>
                     </div>
                   );
                 })}
-              <div className="flex justify-between text-xs text-gray-600 mt-1">
+              <div className="flex justify-between text-xs theme-faint mt-1">
                 <span>-1.0</span>
                 <span>0</span>
                 <span>+1.0</span>
@@ -337,7 +407,8 @@ export default function PollPage() {
 
           <a
             href="/"
-            className="inline-block mt-4 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-semibold transition-colors"
+            className="inline-block mt-2 px-6 py-3 text-white font-bold rounded-xl shadow-md transition-all"
+            style={{ background: "linear-gradient(135deg, #F39C12, #E67E22)" }}
           >
             Create New Poll
           </a>

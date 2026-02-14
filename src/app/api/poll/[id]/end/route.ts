@@ -5,7 +5,7 @@ export async function POST(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const poll = endPoll(params.id);
+  const poll = await endPoll(params.id);
 
   if (!poll) {
     return NextResponse.json(

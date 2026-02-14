@@ -5,7 +5,7 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const poll = getPoll(params.id);
+  const poll = await getPoll(params.id);
 
   if (!poll) {
     return NextResponse.json({ error: "Poll not found" }, { status: 404 });

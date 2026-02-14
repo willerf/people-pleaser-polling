@@ -23,6 +23,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const poll = createPoll(cleaned, !!showScores);
+  const poll = await createPoll(cleaned, !!showScores);
   return NextResponse.json({ id: poll.id });
 }

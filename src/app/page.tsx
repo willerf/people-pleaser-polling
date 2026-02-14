@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/lib/theme";
 
 function SettingsModal({
   open,
@@ -21,16 +22,16 @@ function SettingsModal({
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0" style={{ background: "var(--overlay)" }} />
       <div
-        className="relative bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-sm space-y-4"
+        className="relative theme-surface border theme-border rounded-2xl p-6 w-full max-w-sm space-y-4 theme-shadow"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Settings</h2>
+          <h2 className="text-lg font-bold theme-text">Settings</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 text-xl leading-none"
+            className="theme-muted hover:theme-text text-xl leading-none"
           >
             &times;
           </button>
@@ -41,11 +42,11 @@ function SettingsModal({
             type="checkbox"
             checked={showScores}
             onChange={(e) => setShowScores(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0"
+            className="w-4 h-4 rounded border-gray-300 text-[#2ECC71] focus:ring-[#2ECC71] focus:ring-offset-0"
           />
           <div>
-            <p className="text-sm text-gray-200">Show scores</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium theme-text">Show scores</p>
+            <p className="text-xs theme-secondary">
               Display average scores for all options when the poll ends
             </p>
           </div>
@@ -130,14 +131,72 @@ export default function CreatePoll() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="w-9" />
-        <h1 className="text-3xl font-bold text-center">
-          People Pleaser Polling
-        </h1>
+      <div className="flex justify-end">
+        <ThemeToggle />
+      </div>
+      <img
+        src="/logo.png"
+        alt="People Pleaser Polling"
+        className="w-36 h-36 mx-auto drop-shadow-lg"
+      />
+      <p className="theme-secondary text-center text-sm">
+        Create a poll and share it with friends
+      </p>
+
+      <div className="theme-surface rounded-2xl p-4 theme-shadow border theme-border-light space-y-3">
+        {options.map((opt, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              ref={(el) => { inputRefs.current[i] = el; }}
+              type="text"
+              value={opt}
+              onChange={(e) => updateOption(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              placeholder={`Option ${i + 1}`}
+              className="flex-1 theme-input border theme-border rounded-xl px-4 py-2.5 theme-text placeholder:theme-muted focus:outline-none focus:border-[#3498DB] focus:ring-2 focus:ring-[#3498DB]/20 transition-all"
+              style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
+            />
+            {options.length > 2 && (
+              <button
+                onClick={() => removeOption(i)}
+                className="px-3 py-2 theme-muted hover:text-[#E74C3C] transition-colors"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+        ))}
+
+        {allFilled && (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              readOnly
+              onFocus={handleGhostFocus}
+              placeholder={`Option ${options.length + 1}`}
+              className="flex-1 border border-dashed theme-border rounded-xl px-4 py-2.5 theme-text focus:outline-none focus:border-[#3498DB] cursor-pointer transition-all"
+              style={{ background: "var(--bg-input-ghost)", color: "var(--text-primary)" }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleCreate}
+          disabled={!canCreate || loading}
+          className="flex-1 py-3 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-40 disabled:shadow-none"
+          style={{
+            background: canCreate && !loading
+              ? "linear-gradient(135deg, #2ECC71, #27AE60)"
+              : "var(--text-faint)",
+          }}
+        >
+          {loading ? "Creating..." : "Create Poll"}
+        </button>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+          className="w-12 h-12 flex items-center justify-center rounded-xl theme-surface border theme-border theme-secondary hover:theme-text theme-shadow transition-all"
           title="Settings"
         >
           <svg
@@ -155,53 +214,6 @@ export default function CreatePoll() {
           </svg>
         </button>
       </div>
-      <p className="text-gray-400 text-center">
-        Create a poll and share it with friends
-      </p>
-
-      <div className="space-y-3">
-        {options.map((opt, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              ref={(el) => { inputRefs.current[i] = el; }}
-              type="text"
-              value={opt}
-              onChange={(e) => updateOption(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              placeholder={`Option ${i + 1}`}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-            />
-            {options.length > 2 && (
-              <button
-                onClick={() => removeOption(i)}
-                className="px-3 py-2 text-gray-400 hover:text-red-400 transition-colors"
-              >
-                &times;
-              </button>
-            )}
-          </div>
-        ))}
-
-        {allFilled && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              readOnly
-              onFocus={handleGhostFocus}
-              placeholder={`Option ${options.length + 1}`}
-              className="flex-1 bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 cursor-pointer"
-            />
-          </div>
-        )}
-      </div>
-
-      <button
-        onClick={handleCreate}
-        disabled={!canCreate || loading}
-        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-semibold transition-colors"
-      >
-        {loading ? "Creating..." : "Create Poll"}
-      </button>
 
       <SettingsModal
         open={settingsOpen}
