@@ -1,6 +1,6 @@
 {
   "name": "People Pleaser Polling",
-  "short_name": "PeoplePoll",
+  "short_name": "PPPolling",
   "description": "Anonymous group polling with sliders",
   "start_url": "/",
   "display": "standalone",

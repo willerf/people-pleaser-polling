@@ -219,6 +219,19 @@ export default function PollPage() {
     }
   }
 
+  async function sharePoll() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Vote on this poll!", url });
+      } catch {
+        // user cancelled or share failed
+      }
+    } else {
+      await copyLink();
+    }
+  }
+
   if (phase === "not_found") {
     return (
       <div className="text-center py-20 space-y-4">
@@ -261,18 +274,23 @@ export default function PollPage() {
 
       {/* Share link */}
       <div className="flex gap-2">
-        <input
-          type="text"
-          readOnly
-          value={typeof window !== "undefined" ? window.location.href : ""}
-          className="flex-1 theme-surface border theme-border rounded-xl px-3 py-2 text-sm theme-secondary truncate theme-shadow"
-          style={{ background: "var(--bg-input)" }}
-        />
         <button
           onClick={copyLink}
-          className="px-4 py-2 theme-surface border theme-border hover:border-[#3498DB] rounded-xl text-sm theme-text theme-shadow transition-all"
+          className="flex-1 theme-surface border theme-border rounded-xl px-3 py-2 text-sm theme-secondary truncate theme-shadow text-left transition-all hover:border-[#3498DB]"
+          style={{ background: "var(--bg-input)" }}
         >
-          {copied ? "Copied!" : "Copy"}
+          {copied ? "Copied!" : typeof window !== "undefined" ? window.location.href : ""}
+        </button>
+        <button
+          onClick={sharePoll}
+          className="w-10 h-10 flex items-center justify-center theme-surface border theme-border hover:border-[#3498DB] rounded-xl theme-text theme-shadow transition-all"
+          title="Share"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
         </button>
       </div>
 
