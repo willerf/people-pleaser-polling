@@ -3,7 +3,7 @@ import { createPoll } from "@/lib/store";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { options, showScores } = body;
+  const { options, hideScores } = body;
 
   if (!Array.isArray(options) || options.length < 2) {
     return NextResponse.json(
@@ -23,6 +23,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const poll = await createPoll(cleaned, !!showScores);
+  const poll = await createPoll(cleaned, !!hideScores);
   return NextResponse.json({ id: poll.id });
 }

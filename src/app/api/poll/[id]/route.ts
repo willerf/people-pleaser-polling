@@ -16,7 +16,7 @@ export async function GET(
     voteCount: poll.votes.length,
     ended: poll.ended,
     winner: poll.winner,
-    showScores: poll.showScores,
-    scores: poll.ended && poll.showScores ? getScores(poll) : null,
+    hideScores: poll.hideScores,
+    scores: poll.ended && !poll.hideScores ? getScores(poll) : null,
   });
 }

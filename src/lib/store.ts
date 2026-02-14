@@ -24,7 +24,7 @@ function pollKey(id: string) {
 
 export async function createPoll(
   options: string[],
-  showScores: boolean
+  hideScores: boolean
 ): Promise<Poll> {
   const id = nanoid(10);
   const poll: Poll = {
@@ -33,7 +33,7 @@ export async function createPoll(
     votes: [],
     ended: false,
     winner: null,
-    showScores,
+    hideScores,
     createdAt: Date.now(),
   };
 

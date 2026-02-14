@@ -7,13 +7,13 @@ import { ThemeToggle } from "@/lib/theme";
 function SettingsModal({
   open,
   onClose,
-  showScores,
-  setShowScores,
+  hideScores,
+  setHideScores,
 }: {
   open: boolean;
   onClose: () => void;
-  showScores: boolean;
-  setShowScores: (v: boolean) => void;
+  hideScores: boolean;
+  setHideScores: (v: boolean) => void;
 }) {
   if (!open) return null;
 
@@ -40,14 +40,14 @@ function SettingsModal({
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
-            checked={showScores}
-            onChange={(e) => setShowScores(e.target.checked)}
+            checked={hideScores}
+            onChange={(e) => setHideScores(e.target.checked)}
             className="w-4 h-4 rounded border-gray-300 text-[#2ECC71] focus:ring-[#2ECC71] focus:ring-offset-0"
           />
           <div>
-            <p className="text-sm font-medium theme-text">Show scores</p>
+            <p className="text-sm font-medium theme-text">Hide scores</p>
             <p className="text-xs theme-secondary">
-              Display average scores for all options when the poll ends
+              Hide average scores when the poll ends
             </p>
           </div>
         </label>
@@ -59,7 +59,7 @@ function SettingsModal({
 export default function CreatePoll() {
   const router = useRouter();
   const [options, setOptions] = useState(["", ""]);
-  const [showScores, setShowScores] = useState(false);
+  const [hideScores, setHideScores] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -109,7 +109,7 @@ export default function CreatePoll() {
       const res = await fetch("/api/poll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ options: filled, showScores }),
+        body: JSON.stringify({ options: filled, hideScores }),
       });
       const data = await res.json();
       if (data.id) {
@@ -218,8 +218,8 @@ export default function CreatePoll() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        showScores={showScores}
-        setShowScores={setShowScores}
+        hideScores={hideScores}
+        setHideScores={setHideScores}
       />
     </div>
   );

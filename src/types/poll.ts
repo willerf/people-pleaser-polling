@@ -4,6 +4,6 @@ export interface Poll {
   votes: number[][]; // each vote is array of slider values (-1 to 1)
   ended: boolean;
   winner: string | null;
-  showScores: boolean;
+  hideScores: boolean;
   createdAt: number;
 }

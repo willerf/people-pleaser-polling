@@ -28,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full" data-theme="dark">
-      <body className="h-full">
+    <html lang="en" className="min-h-full" data-theme="dark">
+      <body className="min-h-full">
         <ThemeProvider>
           <main className="mx-auto max-w-lg px-4 py-8">{children}</main>
         </ThemeProvider>

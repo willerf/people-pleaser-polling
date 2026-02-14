@@ -10,7 +10,7 @@ type PollState = {
   voteCount: number;
   ended: boolean;
   winner: string | null;
-  showScores: boolean;
+  hideScores: boolean;
   scores: number[] | null;
 };
 
@@ -358,7 +358,7 @@ export default function PollPage() {
           </div>
 
           {/* Scores breakdown */}
-          {poll.showScores && poll.scores && (
+          {!poll.hideScores && poll.scores && (
             <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
               <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
                 Average Scores

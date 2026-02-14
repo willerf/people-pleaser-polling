@@ -41,7 +41,16 @@
 }
 
 html {
-  background-color: var(--bg-page-solid);
+  min-height: 100%;
+  background: var(--bg-page-solid);
+}
+
+[data-theme="light"] {
+  background: linear-gradient(135deg, #F5F9FF 0%, #FFFFFF 50%, #F0FFF4 100%);
+}
+
+[data-theme="dark"] {
+  background: linear-gradient(135deg, #0F1923 0%, #141E2B 50%, #0F2318 100%);
 }
 
 body {
@@ -49,15 +58,7 @@ body {
   min-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  transition: background 0.3s, color 0.3s;
-}
-
-[data-theme="light"] body {
-  background: linear-gradient(135deg, #F5F9FF 0%, #FFFFFF 50%, #F0FFF4 100%);
-}
-
-[data-theme="dark"] body {
-  background: linear-gradient(135deg, #0F1923 0%, #141E2B 50%, #0F2318 100%);
+  transition: color 0.3s;
 }
 
 /* Theme utility classes */
