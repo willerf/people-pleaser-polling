@@ -12,6 +12,7 @@ export async function GET(
   }
 
   return NextResponse.json({
+    title: poll.title || "Vote on it!",
     options: poll.options,
     voteCount: poll.votes.length,
     ended: poll.ended,

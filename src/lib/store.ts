@@ -25,11 +25,13 @@ function pollKey(id: string) {
 export async function createPoll(
   options: string[],
   hideScores: boolean,
-  votingMethod: VotingMethod = "slider"
+  votingMethod: VotingMethod = "slider",
+  title: string = "Vote on it!"
 ): Promise<Poll> {
   const id = nanoid(10);
   const poll: Poll = {
     id,
+    title,
     options,
     votes: [],
     ended: false,
@@ -54,12 +56,16 @@ export async function getPoll(id: string): Promise<Poll | null> {
     const data = await redis.get<string>(pollKey(id));
     if (!data) return null;
     const poll: Poll = typeof data === "string" ? JSON.parse(data) : (data as unknown as Poll);
-    // Backward compat: default votingMethod for old polls
+    // Backward compat
     if (!poll.votingMethod) poll.votingMethod = "slider";
+    if (!poll.title) poll.title = "Vote on it!";
     return poll;
   } else {
     const poll = memPolls.get(id) || null;
-    if (poll && !poll.votingMethod) poll.votingMethod = "slider";
+    if (poll) {
+      if (!poll.votingMethod) poll.votingMethod = "slider";
+      if (!poll.title) poll.title = "Vote on it!";
+    }
     return poll;
   }
 }

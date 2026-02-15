@@ -6,7 +6,7 @@ const VALID_METHODS: VotingMethod[] = ["slider", "ranked", "single", "veto"];
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { options, hideScores, votingMethod } = body;
+  const { options, hideScores, votingMethod, title } = body;
 
   if (!Array.isArray(options) || options.length < 2) {
     return NextResponse.json(
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
 
   const method: VotingMethod = VALID_METHODS.includes(votingMethod) ? votingMethod : "slider";
 
-  const poll = await createPoll(cleaned, !!hideScores, method);
+  const pollTitle = typeof title === "string" && title.trim() ? title.trim() : "Vote on it!";
+  const poll = await createPoll(cleaned, !!hideScores, method, pollTitle);
   return NextResponse.json({ id: poll.id });
 }

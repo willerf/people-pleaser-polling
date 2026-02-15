@@ -89,6 +89,7 @@ function SettingsModal({
 
 export default function CreatePoll() {
   const router = useRouter();
+  const [title, setTitle] = useState("Vote on it!");
   const [options, setOptions] = useState(["", ""]);
   const [hideScores, setHideScores] = useState(false);
   const [votingMethod, setVotingMethod] = useState<VotingMethod>("slider");
@@ -141,7 +142,7 @@ export default function CreatePoll() {
       const res = await fetch("/api/poll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ options: filled, hideScores, votingMethod }),
+        body: JSON.stringify({ options: filled, hideScores, votingMethod, title }),
       });
       const data = await res.json();
       if (data.id) {
@@ -174,6 +175,15 @@ export default function CreatePoll() {
       <p className="theme-secondary text-center text-sm">
         Create a poll and share it with friends
       </p>
+
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Vote on it!"
+        className="w-full theme-input border theme-border rounded-xl px-4 py-2.5 theme-text placeholder:theme-muted focus:outline-none focus:border-[#3498DB] focus:ring-2 focus:ring-[#3498DB]/20 transition-all text-center font-bold text-lg"
+        style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
+      />
 
       <div className="theme-surface rounded-2xl p-4 theme-shadow border theme-border-light space-y-3">
         {options.map((opt, i) => (

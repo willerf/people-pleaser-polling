@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/lib/theme";
 import { VotingMethod } from "@/types/poll";
 
 type PollState = {
+  title: string;
   options: string[];
   voteCount: number;
   ended: boolean;
@@ -178,12 +179,20 @@ function RankedVoting({
     .map((_, i) => i)
     .sort((a, b) => rankings[a] - rankings[b]);
 
+  const [dragState, setDragState] = useState<{
+    pos: number;        // position being dragged
+    startY: number;     // pointer Y at drag start
+    currentY: number;   // current pointer Y
+    itemHeight: number; // height of one item (including gap)
+  } | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
   function moveUp(pos: number) {
     if (pos === 0) return;
     const newRankings = [...rankings];
     const thisIdx = ordered[pos];
     const aboveIdx = ordered[pos - 1];
-    // Swap their ranks
     newRankings[thisIdx] = rankings[aboveIdx];
     newRankings[aboveIdx] = rankings[thisIdx];
     setRankings(newRankings);
@@ -199,41 +208,125 @@ function RankedVoting({
     setRankings(newRankings);
   }
 
+  function handlePointerDown(pos: number, e: React.PointerEvent) {
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    // Item height + gap (8px from space-y-2)
+    const itemHeight = rect.height + 8;
+    target.setPointerCapture(e.pointerId);
+    setDragState({ pos, startY: e.clientY, currentY: e.clientY, itemHeight });
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!dragState) return;
+    setDragState({ ...dragState, currentY: e.clientY });
+  }
+
+  function handlePointerUp() {
+    if (!dragState) return;
+    const offset = dragState.currentY - dragState.startY;
+    const moveBy = Math.round(offset / dragState.itemHeight);
+    const fromPos = dragState.pos;
+    const toPos = Math.max(0, Math.min(ordered.length - 1, fromPos + moveBy));
+
+    if (fromPos !== toPos) {
+      // Reorder: remove from fromPos, insert at toPos
+      const newOrdered = [...ordered];
+      const [moved] = newOrdered.splice(fromPos, 1);
+      newOrdered.splice(toPos, 0, moved);
+      // Rebuild rankings from new order
+      const newRankings = [...rankings];
+      newOrdered.forEach((optIdx, pos) => {
+        newRankings[optIdx] = pos + 1;
+      });
+      setRankings(newRankings);
+    }
+    setDragState(null);
+  }
+
+  // Compute which position the dragged item is currently over
+  const overPos = dragState
+    ? Math.max(0, Math.min(ordered.length - 1, dragState.pos + Math.round((dragState.currentY - dragState.startY) / dragState.itemHeight)))
+    : -1;
+
   return (
-    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-2">
+    <div ref={containerRef} className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-2">
       <p className="text-xs theme-secondary uppercase tracking-widest font-bold mb-3">
         Drag to rank — #1 is your top choice
       </p>
-      {ordered.map((optIdx, pos) => (
-        <div
-          key={optIdx}
-          className="flex items-center gap-3 rounded-xl px-4 py-3 border theme-border transition-all"
-          style={{ background: "var(--bg-input)" }}
-        >
-          <span className="text-sm font-bold theme-secondary w-6 text-center">
-            {pos + 1}
-          </span>
-          <span className="flex-1 text-sm font-medium theme-text">
-            {options[optIdx]}
-          </span>
-          <div className="flex flex-col gap-0.5">
-            <button
-              onClick={() => moveUp(pos)}
-              disabled={pos === 0}
-              className="px-1.5 py-0.5 text-xs rounded theme-secondary hover:theme-text disabled:opacity-20 transition-all"
+      {ordered.map((optIdx, pos) => {
+        const isDragging = dragState?.pos === pos;
+        const offsetY = isDragging ? dragState.currentY - dragState.startY : 0;
+
+        // Shift other items out of the way
+        let shiftY = 0;
+        if (dragState && !isDragging) {
+          const dragFrom = dragState.pos;
+          if (dragFrom < overPos && pos > dragFrom && pos <= overPos) {
+            shiftY = -dragState.itemHeight;
+          } else if (dragFrom > overPos && pos < dragFrom && pos >= overPos) {
+            shiftY = dragState.itemHeight;
+          }
+        }
+
+        return (
+          <div
+            key={optIdx}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 border transition-all select-none ${
+              isDragging ? "theme-border ring-2 ring-[#3498DB]/30 z-10 relative" : "theme-border"
+            }`}
+            style={{
+              background: "var(--bg-input)",
+              transform: isDragging
+                ? `translateY(${offsetY}px) scale(1.02)`
+                : `translateY(${shiftY}px)`,
+              transition: isDragging ? "box-shadow 0.15s" : "transform 0.2s ease",
+              zIndex: isDragging ? 10 : 1,
+              touchAction: "none",
+            }}
+          >
+            {/* Drag handle */}
+            <div
+              onPointerDown={(e) => handlePointerDown(pos, e)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className="cursor-grab active:cursor-grabbing theme-muted hover:theme-text px-0.5 py-1 touch-none"
             >
-              &#9650;
-            </button>
-            <button
-              onClick={() => moveDown(pos)}
-              disabled={pos === ordered.length - 1}
-              className="px-1.5 py-0.5 text-xs rounded theme-secondary hover:theme-text disabled:opacity-20 transition-all"
-            >
-              &#9660;
-            </button>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="5" cy="3" r="1.5" />
+                <circle cx="11" cy="3" r="1.5" />
+                <circle cx="5" cy="8" r="1.5" />
+                <circle cx="11" cy="8" r="1.5" />
+                <circle cx="5" cy="13" r="1.5" />
+                <circle cx="11" cy="13" r="1.5" />
+              </svg>
+            </div>
+            <span className="text-sm font-bold theme-secondary w-6 text-center">
+              {pos + 1}
+            </span>
+            <span className="flex-1 text-sm font-medium theme-text">
+              {options[optIdx]}
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => moveUp(pos)}
+                disabled={pos === 0}
+                className="px-1.5 py-0.5 text-xs rounded theme-secondary hover:theme-text disabled:opacity-20 transition-all"
+              >
+                &#9650;
+              </button>
+              <button
+                onClick={() => moveDown(pos)}
+                disabled={pos === ordered.length - 1}
+                className="px-1.5 py-0.5 text-xs rounded theme-secondary hover:theme-text disabled:opacity-20 transition-all"
+              >
+                &#9660;
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -725,6 +818,11 @@ export default function PollPage() {
         alt="People Pleaser Polling"
         className="w-20 h-20 mx-auto drop-shadow-md object-contain"
       />
+
+      {/* Poll title */}
+      <h1 className="text-2xl font-black text-center theme-text">
+        {poll.title || "Vote on it!"}
+      </h1>
 
       {/* Share link */}
       <div className="flex gap-2">
