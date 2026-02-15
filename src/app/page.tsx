@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/lib/theme";
 import { VotingMethod } from "@/types/poll";
 
 const VOTING_METHOD_OPTIONS: { value: VotingMethod; label: string; description: string }[] = [
-  { value: "slider", label: "Slider", description: "Rate each option from -1 to +1" },
+  { value: "slider", label: "Approval Scale", description: "Rate each option from -1 to +1" },
   { value: "ranked", label: "Ranked Choice", description: "Rank options in order of preference" },
   { value: "single", label: "Single Choice", description: "Pick your favorite option" },
   { value: "veto", label: "Veto", description: "Pick one option to eliminate" },
@@ -176,14 +176,16 @@ export default function CreatePoll() {
         Create a poll and share it with friends
       </p>
 
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Vote on it!"
-        className="w-full theme-input border theme-border rounded-xl px-4 py-2.5 theme-text placeholder:theme-muted focus:outline-none focus:border-[#3498DB] focus:ring-2 focus:ring-[#3498DB]/20 transition-all text-center font-bold text-lg"
-        style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
-      />
+      <div className="text-center">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Vote on it!"
+          className="w-full theme-text placeholder:theme-muted focus:outline-none transition-all text-center font-bold text-lg border-b-2 theme-border focus:border-[#3498DB] bg-transparent py-1"
+        />
+        <p className="text-xs theme-muted mt-1">Poll title</p>
+      </div>
 
       <div className="theme-surface rounded-2xl p-4 theme-shadow border theme-border-light space-y-3">
         {options.map((opt, i) => (
