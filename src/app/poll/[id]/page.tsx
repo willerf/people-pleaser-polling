@@ -443,8 +443,7 @@ function SliderResults({
         .map((option, i) => ({ option, score: scores[i] }))
         .sort((a, b) => b.score - a.score)
         .map(({ option, score }, i) => {
-          const maxScore = Math.max(...scores.map(Math.abs), 0.1);
-          const barPercent = (Math.abs(score) / maxScore) * 50;
+          const barPercent = Math.abs(score) * 50;
           const isWinner = option === winner;
           return (
             <div key={i} className="space-y-1">
