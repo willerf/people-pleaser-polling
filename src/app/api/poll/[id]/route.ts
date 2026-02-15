@@ -17,6 +17,7 @@ export async function GET(
     ended: poll.ended,
     winner: poll.winner,
     hideScores: poll.hideScores,
+    votingMethod: poll.votingMethod || "slider",
     scores: poll.ended && !poll.hideScores ? getScores(poll) : null,
   });
 }

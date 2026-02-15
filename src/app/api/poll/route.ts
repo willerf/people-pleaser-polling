@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createPoll } from "@/lib/store";
+import { VotingMethod } from "@/types/poll";
+
+const VALID_METHODS: VotingMethod[] = ["slider", "ranked", "single", "veto"];
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { options, hideScores } = body;
+  const { options, hideScores, votingMethod } = body;
 
   if (!Array.isArray(options) || options.length < 2) {
     return NextResponse.json(
@@ -23,6 +26,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const poll = await createPoll(cleaned, !!hideScores);
+  const method: VotingMethod = VALID_METHODS.includes(votingMethod) ? votingMethod : "slider";
+
+  const poll = await createPoll(cleaned, !!hideScores, method);
   return NextResponse.json({ id: poll.id });
 }

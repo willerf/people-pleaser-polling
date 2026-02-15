@@ -16,11 +16,11 @@ export async function POST(
   }
 
   const valid = values.every(
-    (v: unknown) => typeof v === "number" && v >= -1 && v <= 1
+    (v: unknown) => typeof v === "number" && Number.isFinite(v)
   );
   if (!valid) {
     return NextResponse.json(
-      { error: "Each value must be a number between -1 and 1" },
+      { error: "Each value must be a finite number" },
       { status: 400 }
     );
   }
@@ -28,7 +28,7 @@ export async function POST(
   const ok = await addVote(params.id, values);
   if (!ok) {
     return NextResponse.json(
-      { error: "Poll not found, ended, or wrong number of values" },
+      { error: "Poll not found, ended, or invalid vote" },
       { status: 400 }
     );
   }

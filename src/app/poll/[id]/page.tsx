@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import confetti from "canvas-confetti";
 import { ThemeToggle } from "@/lib/theme";
+import { VotingMethod } from "@/types/poll";
 
 type PollState = {
   options: string[];
@@ -11,6 +12,7 @@ type PollState = {
   ended: boolean;
   winner: string | null;
   hideScores: boolean;
+  votingMethod: VotingMethod;
   scores: number[] | null;
 };
 
@@ -118,6 +120,416 @@ function getVotedKey(id: string) {
   return `voted_${id}`;
 }
 
+/* ── Voting UIs ── */
+
+function SliderVoting({
+  options,
+  sliders,
+  setSliders,
+}: {
+  options: string[];
+  sliders: number[];
+  setSliders: (v: number[]) => void;
+}) {
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-6">
+      {options.map((option, i) => (
+        <div key={i} className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="font-medium theme-text">{option}</span>
+            <span className="theme-secondary tabular-nums w-12 text-right font-medium">
+              {sliders[i]?.toFixed(1)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={-1}
+            max={1}
+            step={0.1}
+            value={sliders[i] ?? 0}
+            onChange={(e) => {
+              const next = [...sliders];
+              next[i] = parseFloat(e.target.value);
+              setSliders(next);
+            }}
+          />
+          <div className="flex justify-between text-xs theme-muted">
+            <span>Against</span>
+            <span>Neutral</span>
+            <span>For</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RankedVoting({
+  options,
+  rankings,
+  setRankings,
+}: {
+  options: string[];
+  rankings: number[];
+  setRankings: (v: number[]) => void;
+}) {
+  // Build ordered list: index of option at each rank position
+  const ordered = options
+    .map((_, i) => i)
+    .sort((a, b) => rankings[a] - rankings[b]);
+
+  function moveUp(pos: number) {
+    if (pos === 0) return;
+    const newRankings = [...rankings];
+    const thisIdx = ordered[pos];
+    const aboveIdx = ordered[pos - 1];
+    // Swap their ranks
+    newRankings[thisIdx] = rankings[aboveIdx];
+    newRankings[aboveIdx] = rankings[thisIdx];
+    setRankings(newRankings);
+  }
+
+  function moveDown(pos: number) {
+    if (pos === ordered.length - 1) return;
+    const newRankings = [...rankings];
+    const thisIdx = ordered[pos];
+    const belowIdx = ordered[pos + 1];
+    newRankings[thisIdx] = rankings[belowIdx];
+    newRankings[belowIdx] = rankings[thisIdx];
+    setRankings(newRankings);
+  }
+
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-2">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold mb-3">
+        Drag to rank — #1 is your top choice
+      </p>
+      {ordered.map((optIdx, pos) => (
+        <div
+          key={optIdx}
+          className="flex items-center gap-3 rounded-xl px-4 py-3 border theme-border transition-all"
+          style={{ background: "var(--bg-input)" }}
+        >
+          <span className="text-sm font-bold theme-secondary w-6 text-center">
+            {pos + 1}
+          </span>
+          <span className="flex-1 text-sm font-medium theme-text">
+            {options[optIdx]}
+          </span>
+          <div className="flex flex-col gap-0.5">
+            <button
+              onClick={() => moveUp(pos)}
+              disabled={pos === 0}
+              className="px-1.5 py-0.5 text-xs rounded theme-secondary hover:theme-text disabled:opacity-20 transition-all"
+            >
+              &#9650;
+            </button>
+            <button
+              onClick={() => moveDown(pos)}
+              disabled={pos === ordered.length - 1}
+              className="px-1.5 py-0.5 text-xs rounded theme-secondary hover:theme-text disabled:opacity-20 transition-all"
+            >
+              &#9660;
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SingleChoiceVoting({
+  options,
+  selected,
+  setSelected,
+}: {
+  options: string[];
+  selected: number | null;
+  setSelected: (v: number) => void;
+}) {
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-2">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold mb-3">
+        Pick your favorite
+      </p>
+      {options.map((option, i) => {
+        const isSelected = selected === i;
+        return (
+          <button
+            key={i}
+            onClick={() => setSelected(i)}
+            className={`w-full text-left rounded-xl px-4 py-3 border transition-all text-sm font-medium ${
+              isSelected
+                ? "border-[#3498DB] ring-2 ring-[#3498DB]/20 text-[#3498DB]"
+                : "theme-border theme-text hover:border-[#3498DB]/50"
+            }`}
+            style={{ background: isSelected ? "var(--bg-input)" : "var(--bg-input)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  isSelected ? "border-[#3498DB]" : "theme-border"
+                }`}
+              >
+                {isSelected && (
+                  <div className="w-2 h-2 rounded-full bg-[#3498DB]" />
+                )}
+              </div>
+              {option}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function VetoVoting({
+  options,
+  selected,
+  setSelected,
+}: {
+  options: string[];
+  selected: number | null;
+  setSelected: (v: number) => void;
+}) {
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-2">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold mb-3">
+        Select one option to veto
+      </p>
+      {options.map((option, i) => {
+        const isSelected = selected === i;
+        return (
+          <button
+            key={i}
+            onClick={() => setSelected(i)}
+            className={`w-full text-left rounded-xl px-4 py-3 border transition-all text-sm font-medium ${
+              isSelected
+                ? "border-[#E74C3C] ring-2 ring-[#E74C3C]/20 text-[#E74C3C]"
+                : "theme-border theme-text hover:border-[#E74C3C]/50"
+            }`}
+            style={{ background: isSelected ? "var(--bg-input)" : "var(--bg-input)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-4 h-4 rounded flex items-center justify-center border-2 ${
+                  isSelected ? "border-[#E74C3C] bg-[#E74C3C]" : "theme-border"
+                }`}
+              >
+                {isSelected && (
+                  <span className="text-white text-xs leading-none">&times;</span>
+                )}
+              </div>
+              {option}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Results UIs ── */
+
+function SliderResults({
+  options,
+  scores,
+  winner,
+}: {
+  options: string[];
+  scores: number[];
+  winner: string | null;
+}) {
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
+        Average Scores
+      </p>
+      {options
+        .map((option, i) => ({ option, score: scores[i] }))
+        .sort((a, b) => b.score - a.score)
+        .map(({ option, score }, i) => {
+          const maxScore = Math.max(...scores.map(Math.abs), 0.1);
+          const barPercent = (Math.abs(score) / maxScore) * 50;
+          const isWinner = option === winner;
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className={isWinner ? "font-bold text-[#2ECC71]" : "theme-text"}>
+                  {option}
+                </span>
+                <span className="theme-secondary tabular-nums font-medium">
+                  {score > 0 ? "+" : ""}{score.toFixed(1)}
+                </span>
+              </div>
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
+                <div className="absolute left-1/2 top-0 bottom-0 w-px" style={{ background: "var(--border)" }} />
+                <div
+                  className={`absolute top-0 bottom-0 rounded-full ${isWinner ? "opacity-100" : "opacity-60"}`}
+                  style={{
+                    background: score >= 0
+                      ? "linear-gradient(90deg, #2ECC71, #27AE60)"
+                      : "linear-gradient(270deg, #E74C3C, #C0392B)",
+                    ...(score >= 0
+                      ? { left: "50%", width: `${barPercent}%` }
+                      : { right: "50%", width: `${barPercent}%` }),
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      <div className="flex justify-between text-xs theme-faint mt-1">
+        <span>-1.0</span>
+        <span>0</span>
+        <span>+1.0</span>
+      </div>
+    </div>
+  );
+}
+
+function RankedResults({
+  options,
+  scores,
+  winner,
+}: {
+  options: string[];
+  scores: number[];
+  winner: string | null;
+}) {
+  const maxScore = Math.max(...scores, 0.1);
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
+        Borda Scores — Winner by ranked choice
+      </p>
+      {options
+        .map((option, i) => ({ option, score: scores[i] }))
+        .sort((a, b) => b.score - a.score)
+        .map(({ option, score }, i) => {
+          const barPercent = (score / maxScore) * 100;
+          const isWinner = option === winner;
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className={isWinner ? "font-bold text-[#2ECC71]" : "theme-text"}>
+                  {option}
+                </span>
+                <span className="theme-secondary tabular-nums font-medium">
+                  {score.toFixed(1)}
+                </span>
+              </div>
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
+                <div
+                  className={`absolute top-0 bottom-0 left-0 rounded-full ${isWinner ? "opacity-100" : "opacity-60"}`}
+                  style={{
+                    background: "linear-gradient(90deg, #3498DB, #2F80ED)",
+                    width: `${barPercent}%`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
+function SingleChoiceResults({
+  options,
+  scores,
+  winner,
+}: {
+  options: string[];
+  scores: number[];
+  winner: string | null;
+}) {
+  const maxScore = Math.max(...scores, 1);
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
+        Vote Counts
+      </p>
+      {options
+        .map((option, i) => ({ option, score: scores[i] }))
+        .sort((a, b) => b.score - a.score)
+        .map(({ option, score }, i) => {
+          const barPercent = (score / maxScore) * 100;
+          const isWinner = option === winner;
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className={isWinner ? "font-bold text-[#2ECC71]" : "theme-text"}>
+                  {option}
+                </span>
+                <span className="theme-secondary tabular-nums font-medium">
+                  {score} vote{score !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
+                <div
+                  className={`absolute top-0 bottom-0 left-0 rounded-full ${isWinner ? "opacity-100" : "opacity-60"}`}
+                  style={{
+                    background: "linear-gradient(90deg, #2ECC71, #27AE60)",
+                    width: `${barPercent}%`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
+function VetoResults({
+  options,
+  scores,
+  winner,
+}: {
+  options: string[];
+  scores: number[];
+  winner: string | null;
+}) {
+  const maxScore = Math.max(...scores, 1);
+  return (
+    <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
+      <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
+        Veto Counts — Fewest vetoes wins
+      </p>
+      {options
+        .map((option, i) => ({ option, score: scores[i] }))
+        .sort((a, b) => a.score - b.score)
+        .map(({ option, score }, i) => {
+          const barPercent = (score / maxScore) * 100;
+          const isWinner = option === winner;
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className={isWinner ? "font-bold text-[#2ECC71]" : "theme-text"}>
+                  {option}
+                </span>
+                <span className="theme-secondary tabular-nums font-medium">
+                  {score} veto{score !== 1 ? "es" : ""}
+                </span>
+              </div>
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
+                <div
+                  className={`absolute top-0 bottom-0 left-0 rounded-full ${isWinner ? "opacity-100" : "opacity-60"}`}
+                  style={{
+                    background: "linear-gradient(90deg, #E74C3C, #C0392B)",
+                    width: `${barPercent}%`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
 export default function PollPage() {
   const params = useParams();
   const id = params.id as string;
@@ -125,6 +537,8 @@ export default function PollPage() {
   const [poll, setPoll] = useState<PollState | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [sliders, setSliders] = useState<number[]>([]);
+  const [rankings, setRankings] = useState<number[]>([]);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const confettiFired = useRef(false);
@@ -161,7 +575,13 @@ export default function PollPage() {
         if (hasVoted()) {
           setPhase("waiting");
         } else {
-          setSliders(data.options.map(() => 0));
+          // Initialize voting state based on method
+          const method = data.votingMethod || "slider";
+          if (method === "slider") {
+            setSliders(data.options.map(() => 0));
+          } else if (method === "ranked") {
+            setRankings(data.options.map((_, i) => i + 1));
+          }
           setPhase("voting");
         }
       }
@@ -188,14 +608,46 @@ export default function PollPage() {
     }
   }, [phase]);
 
+  function getVoteValues(): number[] | null {
+    if (!poll) return null;
+    const method = poll.votingMethod || "slider";
+    switch (method) {
+      case "slider":
+        return sliders;
+      case "ranked":
+        return rankings;
+      case "single": {
+        if (selectedOption === null) return null;
+        return poll.options.map((_, i) => (i === selectedOption ? 1 : 0));
+      }
+      case "veto": {
+        if (selectedOption === null) return null;
+        return poll.options.map((_, i) => (i === selectedOption ? 1 : 0));
+      }
+      default:
+        return null;
+    }
+  }
+
+  function canSubmitVote(): boolean {
+    if (!poll) return false;
+    const method = poll.votingMethod || "slider";
+    if (method === "single" || method === "veto") {
+      return selectedOption !== null;
+    }
+    return true;
+  }
+
   async function handleVote() {
     if (hasVoted()) return;
+    const values = getVoteValues();
+    if (!values) return;
     setSubmitting(true);
     try {
       await fetch(`/api/poll/${id}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ values: sliders }),
+        body: JSON.stringify({ values }),
       });
       markVoted();
       setPhase("waiting");
@@ -261,6 +713,8 @@ export default function PollPage() {
     );
   }
 
+  const votingMethod = poll.votingMethod || "slider";
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
@@ -302,42 +756,25 @@ export default function PollPage() {
       {/* Voting phase */}
       {phase === "voting" && (
         <div className="space-y-5">
-          <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-6">
-            {poll.options.map((option, i) => (
-              <div key={i} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium theme-text">{option}</span>
-                  <span className="theme-secondary tabular-nums w-12 text-right font-medium">
-                    {sliders[i]?.toFixed(1)}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-1}
-                  max={1}
-                  step={0.1}
-                  value={sliders[i] ?? 0}
-                  onChange={(e) => {
-                    const next = [...sliders];
-                    next[i] = parseFloat(e.target.value);
-                    setSliders(next);
-                  }}
-                />
-                <div className="flex justify-between text-xs theme-muted">
-                  <span>Against</span>
-                  <span>Neutral</span>
-                  <span>For</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {votingMethod === "slider" && (
+            <SliderVoting options={poll.options} sliders={sliders} setSliders={setSliders} />
+          )}
+          {votingMethod === "ranked" && (
+            <RankedVoting options={poll.options} rankings={rankings} setRankings={setRankings} />
+          )}
+          {votingMethod === "single" && (
+            <SingleChoiceVoting options={poll.options} selected={selectedOption} setSelected={setSelectedOption} />
+          )}
+          {votingMethod === "veto" && (
+            <VetoVoting options={poll.options} selected={selectedOption} setSelected={setSelectedOption} />
+          )}
 
           <button
             onClick={handleVote}
-            disabled={submitting}
+            disabled={submitting || !canSubmitVote()}
             className="w-full py-3 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-40"
             style={{
-              background: submitting
+              background: submitting || !canSubmitVote()
                 ? "var(--text-faint)"
                 : "linear-gradient(135deg, #3498DB, #2F80ED)",
             }}
@@ -365,7 +802,7 @@ export default function PollPage() {
         <div className="space-y-4 text-center">
           <div className="theme-surface rounded-2xl p-6 theme-shadow border theme-border-light space-y-3">
             <p className="theme-secondary text-xs uppercase tracking-widest font-bold">
-              The winner is
+              {votingMethod === "veto" ? "The survivor is" : "The winner is"}
             </p>
             <p className="text-4xl font-black" style={{ color: "#2ECC71" }}>
               {poll.winner}
@@ -377,50 +814,20 @@ export default function PollPage() {
 
           {/* Scores breakdown */}
           {!poll.hideScores && poll.scores && (
-            <div className="theme-surface rounded-2xl p-5 theme-shadow border theme-border-light space-y-3 text-left">
-              <p className="text-xs theme-secondary uppercase tracking-widest font-bold">
-                Average Scores
-              </p>
-              {poll.options
-                .map((option, i) => ({ option, score: poll.scores![i] }))
-                .sort((a, b) => b.score - a.score)
-                .map(({ option, score }, i) => {
-                  const maxScore = Math.max(...poll.scores!.map(Math.abs), 0.1);
-                  const barPercent = (Math.abs(score) / maxScore) * 50;
-                  const isWinner = option === poll.winner;
-                  return (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className={isWinner ? "font-bold text-[#2ECC71]" : "theme-text"}>
-                          {option}
-                        </span>
-                        <span className="theme-secondary tabular-nums font-medium">
-                          {score > 0 ? "+" : ""}{score.toFixed(1)}
-                        </span>
-                      </div>
-                      <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
-                        <div className="absolute left-1/2 top-0 bottom-0 w-px" style={{ background: "var(--border)" }} />
-                        <div
-                          className={`absolute top-0 bottom-0 rounded-full ${isWinner ? "opacity-100" : "opacity-60"}`}
-                          style={{
-                            background: score >= 0
-                              ? "linear-gradient(90deg, #2ECC71, #27AE60)"
-                              : "linear-gradient(270deg, #E74C3C, #C0392B)",
-                            ...(score >= 0
-                              ? { left: "50%", width: `${barPercent}%` }
-                              : { right: "50%", width: `${barPercent}%` }),
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              <div className="flex justify-between text-xs theme-faint mt-1">
-                <span>-1.0</span>
-                <span>0</span>
-                <span>+1.0</span>
-              </div>
-            </div>
+            <>
+              {votingMethod === "slider" && (
+                <SliderResults options={poll.options} scores={poll.scores} winner={poll.winner} />
+              )}
+              {votingMethod === "ranked" && (
+                <RankedResults options={poll.options} scores={poll.scores} winner={poll.winner} />
+              )}
+              {votingMethod === "single" && (
+                <SingleChoiceResults options={poll.options} scores={poll.scores} winner={poll.winner} />
+              )}
+              {votingMethod === "veto" && (
+                <VetoResults options={poll.options} scores={poll.scores} winner={poll.winner} />
+              )}
+            </>
           )}
 
           <a

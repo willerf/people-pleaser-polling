@@ -3,17 +3,29 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/lib/theme";
+import { VotingMethod } from "@/types/poll";
+
+const VOTING_METHOD_OPTIONS: { value: VotingMethod; label: string; description: string }[] = [
+  { value: "slider", label: "Slider", description: "Rate each option from -1 to +1" },
+  { value: "ranked", label: "Ranked Choice", description: "Rank options in order of preference" },
+  { value: "single", label: "Single Choice", description: "Pick your favorite option" },
+  { value: "veto", label: "Veto", description: "Pick one option to eliminate" },
+];
 
 function SettingsModal({
   open,
   onClose,
   hideScores,
   setHideScores,
+  votingMethod,
+  setVotingMethod,
 }: {
   open: boolean;
   onClose: () => void;
   hideScores: boolean;
   setHideScores: (v: boolean) => void;
+  votingMethod: VotingMethod;
+  setVotingMethod: (v: VotingMethod) => void;
 }) {
   if (!open) return null;
 
@@ -35,6 +47,25 @@ function SettingsModal({
           >
             &times;
           </button>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium theme-text">Voting Method</label>
+          <select
+            value={votingMethod}
+            onChange={(e) => setVotingMethod(e.target.value as VotingMethod)}
+            className="w-full border theme-border rounded-xl px-4 py-2.5 theme-text focus:outline-none focus:border-[#3498DB] focus:ring-2 focus:ring-[#3498DB]/20 transition-all text-sm"
+            style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
+          >
+            {VOTING_METHOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs theme-secondary">
+            {VOTING_METHOD_OPTIONS.find((o) => o.value === votingMethod)?.description}
+          </p>
         </div>
 
         <label className="flex items-center gap-3 cursor-pointer">
@@ -60,6 +91,7 @@ export default function CreatePoll() {
   const router = useRouter();
   const [options, setOptions] = useState(["", ""]);
   const [hideScores, setHideScores] = useState(false);
+  const [votingMethod, setVotingMethod] = useState<VotingMethod>("slider");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -109,7 +141,7 @@ export default function CreatePoll() {
       const res = await fetch("/api/poll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ options: filled, hideScores }),
+        body: JSON.stringify({ options: filled, hideScores, votingMethod }),
       });
       const data = await res.json();
       if (data.id) {
@@ -220,6 +252,8 @@ export default function CreatePoll() {
         onClose={() => setSettingsOpen(false)}
         hideScores={hideScores}
         setHideScores={setHideScores}
+        votingMethod={votingMethod}
+        setVotingMethod={setVotingMethod}
       />
     </div>
   );
